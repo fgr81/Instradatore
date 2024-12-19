@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "instradatore"
+version = "0.1.0"
+description = ""
+authors = ["fabio massimo grasso <fabiomassimo.grasso@cnr.it>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0.2"
+rich-click = "^1.8.3"
+xarray = "^2024.10.0"
+netcdf4 = "^1.7.2"
+h5netcdf = "^1.4.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

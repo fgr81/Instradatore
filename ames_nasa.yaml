@@ -1,0 +1,75 @@
+name: "Ames_post_processing"
+folder: null
+note: null
+report_folder: '/cantiere/opendap_data/BF_bed_instability/nasa_data_portal/'
+report_name: 'Post_Processing_Report'
+env:
+  root_lavoro: "/cantiere/opendap_data/BF_bed_instability/nasa_data_portal/"
+  sol_file_dati: "03340"
+  periodi: ["000", "012", "024", "036", "048", "060", "072", "084", "096", "108", "120", "132", "144", "156", "168", "180", "192", "204", "216", "228", "240", "252", "264", "276", "288", "300", "312", "324", "336", "348", "360"]
+  out_type: "diurn"
+  z_type: "zagl"
+
+steps:
+
+  - name: "Split"
+    type: "split"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+
+  - name: "Fixed"
+    type: "fixed"
+    jump: 1
+    start: null
+    stop: null
+
+  - name: "Add"
+    type: "add"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+
+  - name: "Interpolate atmos_daily to standard altitude ZAGL"
+    type: "altitude"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+  
+  - name: "Reduce vars."
+    type: "reduce"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      variabili_selezionate: ['rho', 'rho_f', 'ps', 'ts', 'temp', 'ucomp', 'vcomp', 'ucomp_bot', 'vcomp_bot', 'temp_bot']
+
+  - name: "Flatting_tod"
+    type: "flatting"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+
+  - name: "Add Stress"
+    type: "add_stress"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 14
+      var_name: "calculated_stress"
+
+  - name: "Merge"
+    type: "merge"
+    jump: 0
+    start: null
+    stop: null

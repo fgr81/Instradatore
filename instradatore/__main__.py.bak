@@ -1,0 +1,105 @@
+import rich_click as click
+from rich.progress import SpinnerColumn, Progress
+import yaml
+import logging
+from os.path import exists
+
+
+from  instradatore.router import Router
+
+def make_url(folder, filename):
+    return f"{folder}/{filename}.yaml"
+
+
+@click.group()
+@click.option('--log', default='log/instradatore.log', help='Log file location')
+@click.pass_context
+def cli(ctx, log):
+    """Comando principale per la gestione dell'app."""
+    # Configura il logging
+    setup_logging(log)
+    # Puoi anche passare altre variabili di contesto, se necessario
+    ctx.obj = {'log': log}
+
+def setup_logging(log_filename):
+    """Configura il file di log."""
+    logging.basicConfig(filename=log_filename,
+                        level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(filename)s - Line %(lineno)d - %(message)s'
+                        )
+    logging.debug("Logging configurato correttamente")
+    
+
+@cli.command("init")
+@click.argument('name')
+@click.option('--folder', prompt='Work folder', help='The folder in which save the chain.', default='./')
+def init_router(name, folder):
+    # TODO creo una istanza di Router contenente un Piece di default e li salvo su disco 
+
+    _url = make_url(folder, name)
+
+    if exists(_url):
+        # File exists.
+        if click.confirm(f"Il file '{_url}' esiste già. Vuoi inizializzarlo?", default=True):
+            # Initialite the chain.
+            with open(_url, 'r') as yaml_file:
+                _data = yaml.safe_load(yaml_file)
+                logging.info(f"File {_url} caricato")
+                _router = Router(**_data)
+                ###
+                # Set all start(s) and stop(s) to None
+                ###
+                _router.start = None
+                _router.stop = None
+                for step in _router.steps:
+                    step.start = None
+                    step.stop = None
+            with open('prova.yaml', 'w') as f:
+                 yaml.dump(_router.to_dict(), f)
+            # Save _router to yaml file
+            #yaml_file.write(_router)
+
+        else:
+            logging.info("L'utente ha scelto di non caricare il file YAML.")
+            print("File non caricato.\nEsco.")
+    else:
+        # TODO Il file non esite: crearlo chiedendo name, step, ecc
+        pass
+
+@cli.command("start")
+@click.argument('name')
+@click.option('--folder', prompt='Work folder', help='The folder in which save the chain.', default='./')
+def start_router(name, folder):
+    
+    # TODO salva su disco lo yaml aggiornato con gli start e end 
+    # TODO pensare al fatto che sia opportuno o no iniziare una catena avente start/stop 'sporchi'
+    
+    _url = make_url(folder, name)
+    logging.debug(f"Start {_url}")
+    if exists(_url):
+        with open(_url,'r') as yaml_file:
+            _data = yaml.safe_load(yaml_file)
+            logging.info("File {_url} caricato")
+            _router = Router(**_data)
+
+            with Progress(SpinnerColumn(), transient=True) as progress:
+                task = progress.add_task("[cyan]Avviando il router...", start=False)
+                progress.start_task(task)
+
+                # Eseguo _router.run() all'interno di una funzione per mantenere l'animazione
+                try:
+                    _router.run()
+                except Exception as e:
+                    logging.error(f"Errore durante l'esecuzione: {e}")
+                    progress.stop_task(task)
+                    raise
+            _router.run()
+    else:
+        print("File non trovato")
+
+
+
+if __name__ == '__main__':
+
+    cli()
+

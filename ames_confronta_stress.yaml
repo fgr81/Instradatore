@@ -1,0 +1,70 @@
+name: "Ames_post_processing"
+folder: null
+note: null
+report_folder: '/cantiere/opendap_data/confronta_stress'
+report_name: 'Report'
+env:
+  root_lavoro: "/cantiere/opendap_data/confronta_stress"
+  sol_file_dati: "02004"
+  periodi: ["000", "012", "024", "036", "048", "060", "072", "084", "096", "108", "120", "132", "144", "156", "168", "180", "192", "204", "216", "228", "240", "252", "264", "276", "288", "300", "312", "324", "336", "348", "360"]
+  out_type: "daily"
+  z_type: "zagl"
+
+steps:
+
+  - name: "Split"
+    type: "split"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+
+  - name: "Fixed"
+    type: "fixed"
+    jump: 1
+    start: null
+    stop: null
+
+  - name: "Add density (rho) and mid-point altitude (zfull)"
+    type: "add"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+
+  - name: "Interpolate atmos_daily"
+    type: "altitude"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      z_type: "zagl"
+  
+  - name: "Reduce vars."
+    type: "reduce"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      variabili_selezionate: ['rho', 'rho_f', 'stress', 'ukd', 'vkd', 'ps', 'tkd', 'co2ice_sfc', 'ucomp', 'vcomp']
+      z_type: "zagl"
+
+  - name: "Add Stress"
+    type: "add_stress"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      var_name: "calculated_stress"
+      z_type: "zagl"
+
+  - name: "Merge"
+    type: "merge"
+    jump: 0
+    start: null
+    stop: null

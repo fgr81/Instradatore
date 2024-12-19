@@ -1,0 +1,106 @@
+import logging
+import os.path
+import importlib
+
+
+class Step():
+
+    def __init__(self, step_dict):
+        self.name = step_dict['name']
+        self.type = step_dict['type']
+        if 'note' in step_dict.keys():
+            self.note = step_dict['note']
+        else:
+            self.note = None
+        if 'jump' in step_dict.keys():
+            self.jump = step_dict['jump']
+        else:
+            self.jump = None
+        self.start = step_dict['start']
+        self.stop = step_dict['stop']
+        if 'env' in step_dict.keys():
+            self.env = step_dict['env'] 
+        else:
+            self.env = {}
+
+    def __str__(self):
+        return f"{self.name}, {self.type}, {self.note}, {self.start}, {self.stop}, {self.env}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def run(self, report):
+        # Leggo type e instanzio la classe corrispondente
+        logging.debug(f"Instanzio {self}")
+        try:
+            module_name = f"handlers.{self.type}"  # adatta 'moduli' alla struttura del tuo progetto
+            module = importlib.import_module(module_name)
+            class_name = self.type.capitalize()
+            _step_class = getattr(module, class_name)
+            _step = _step_class(report, **self.env)
+        except Exception as e:
+            logging.debug(f"Eccezione in Step.run(): {e}")
+        
+
+class Router():
+
+    def __init__(self, name, folder=None, note=None, start=None, stop=None, steps=None):
+        
+        self.name = name
+        if (folder == None):
+            self.folder = os.path.dirname(os.path.realpath(__file__))
+        else:
+            self.folder = folder
+        self.note = note
+        self.start = start
+        self.stop = stop
+        self.steps = []
+        self.report = Report(self.folder, self.name)
+        if steps:
+            for item in steps:
+             step = Step(item)
+             self.steps.append(step)
+
+        logging.debug(f"Caricato {self}")
+        
+
+    def __str__(self):
+        _s = f"{self.name}, {self.folder}, {self.note}, {self.start}, {self.stop}"
+        for e in self.steps:
+            _s += f"\n\t{e}"
+        return (_s)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def run(self):
+        logging.debug(f"Sono dentro Router.run()")
+        for s in self.steps:
+            logging.debug(f"Faccio il run di {s}")
+            if s.jump:
+                logging.info(f"{s.name} è in jump")
+                next
+            else:
+                s.run(self.report)
+        self.report.finalize()
+
+
+class Report():
+    '''
+    '''
+    def __init__(self, folder="./", filename="untitled"):
+        self.url = folder + filename + ".html"
+        logging.debug(f"Creato in memoria il report {self.url}")
+        intestazione = "intestazione del report\n"
+        self.message = intestazione
+
+    def add(self, msg):
+        logging.debug(f"Report.add: {msg}")
+        self.message += msg
+
+    def finalize(self):
+        logging.debug(f"Finalizzo il report:\n{self.message}")
+        with open(self.url, 'w') as f:
+            f.write(self.message)
+        f.close()
+                 

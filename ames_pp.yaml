@@ -1,0 +1,61 @@
+name: "Ames_post_processing"
+folder: null
+note: null
+report_folder: '/cantiere/opendap_data/prove'
+report_name: 'CIAO'
+env:
+  root_lavoro: "/cantiere/opendap_data/prove"
+  sol_file_dati: "02004"
+  periodi: ["000", "012", "024", "036", "048", "060", "072", "084", "096", "108", "120", "132", "144", "156", "168", "180", "192", "204", "216", "228", "240", "252", "264", "276", "288", "300", "312", "324", "336", "348", "360"]
+steps:
+  - name: "Interpolazione"
+    type: "interp"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      cinterp: "/home/fgr81/cantiere_ames/cinterp_script.csh"
+      file_dati: "02004.nc.tar"
+      cartella_dati: "/cantiere/opendap_data/FMS_MARS_runs/am4_mars_runs/fms_background_ott24/history"
+  - name: "Split"
+    type: "split"
+    jump: 1
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+  - name: "Fixed"
+    type: "fixed"
+    jump: 0
+    start: null
+    stop: null
+  - name: "Add density (rho) and mid-point altitude (zfull) to atmos_average"
+    type: "add"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+  - name: "Interpolate atmos_daily to standard altitude"
+    type: "altitude"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      tipo_z: "zstd"
+  - name: "Vertically-differentiating the zonal (U) and meridional (V) winds, i.e. computing dU/dz and dV/dz."
+    type: "zdiff"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+  - name: "Reduce vars."
+    type: "reduce"
+    jump: 0
+    start: null
+    stop: null
+    env:
+      max_threads: 5
+      variabili_selezionate: ['rho', 'rho_f', 'stress', 'ukd', 'vkd', 'ps', 'surf_temp', 'co2ice_sfc', 'dz_surf_ucomp', 'dz_surf_vcomp']
