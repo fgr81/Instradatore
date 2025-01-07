@@ -42,12 +42,18 @@
 1. Define the execution sequence in a `scripts.yaml` file.
    - Example `ames_34.yaml`
 
-2. Run Instradatore by passing the configuration file:
+2. Run Instradatore using the following command, specifying any desired options or commands:
    ```bash
-   python instradatore.py scripts.yaml
+   python -m instradatore [OPTIONS] COMMAND [ARGS]...
    ```
 
-3. The tool will process the scripts in the specified order, displaying real-time progress with clear and colorful output.
+   - **Available options:**
+     - `--log TEXT`: Specify the log file location.
+     - `--folder TEXT`: Define the folder where the chain will be saved.
+     - `--daemon, -d`: Run in background mode.
+
+   - **Available commands:**
+     - `start`: Start the execution of the script chain.
 
 ---
 
