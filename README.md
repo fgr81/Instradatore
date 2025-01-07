@@ -51,7 +51,6 @@
 
    - **Available options:**
      - `--log TEXT`: Specify the log file location.
-     - `--folder TEXT`: Define the folder where the chain will be saved.
      - `--daemon, -d`: Run in background mode.
 
    - **Available commands:**
