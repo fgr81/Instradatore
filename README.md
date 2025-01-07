@@ -10,6 +10,8 @@
 - **Dependencies included:** Utilizes modern Python libraries like `pyyaml` and `rich-click` for enhanced functionality.
 - **Support for NetCDF and HDF5:** Includes tools for handling scientific data with `xarray`, `netcdf4`, and `h5netcdf`.
 - **Documentation-ready:** Bundled with `Sphinx` and themes for creating beautiful documentation.
+- **HTML Report Generation:** Automatically generates an HTML report detailing the execution of scripts, providing insights into the workflow.
+
 
 ---
 
@@ -106,7 +108,7 @@ We welcome contributions! To contribute:
 ---
 
 ## License
-This project is licensed under the **GNU GPLv3**. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU GPLv3**. 
 
 ---
 
