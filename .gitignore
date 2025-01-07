@@ -7,3 +7,5 @@ log/*
 *.nc
 *.bak*
 tests/__pycache__/
+instradatore/__pycache__
+instradatore/*bak*
