@@ -13,96 +13,96 @@ import logging
 
 logging.basicConfig(filename='log/sand_flux.log', level=logging.DEBUG)
 
-#root_lavoro = sys.argv[1]
+# Root directory for processing
 root_lavoro = f"data/{sys.argv[1]}/"
 
 OV_VAL = 9.96921e+36  # CAP post-processing induces the overflow on this numeric value
 
-# Definizione del decoratore
+
 def logica_comune(func):
+    """
+    Decorator to add common logic before and after specific algorithm execution.
+
+    Args:
+        func (function): The function to wrap.
+
+    Returns:
+        function: The wrapped function with common logic.
+    """
     def wrapper(*args, **kwargs):
-        # Parte comune iniziale
         logging.info(func.__name__)
 
         logging.debug('step_iniziale')
         filtered_ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a = step_iniziale(*args, **kwargs)
 
-        # Esecuzione del passo centrale
         logging.debug('func')
         result_algo = func(filtered_ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a)
 
-        # Parte comune finale
         logging.debug('calcola metriche')
         new_ds = calcola_metriche(*result_algo)
 
         logging.debug('salvo netcdf')
         file_dest = f"{root_lavoro}/sand_flux_data/{func.__name__}__th_{sys.argv[3]}.nc"
-        
         new_ds.to_netcdf(file_dest)
 
         return 0
-    
     return wrapper
 
+
 def step_iniziale(*args, **kwargs):
+    """
+    Loads and preprocesses the dataset for sand flux computation.
+
+    Returns:
+        tuple: Contains the dataset, surface pressure, surface temperature, wind components, 
+               stress, and air density.
+    """
     logging.debug("Open dataset...")
-    # fmg 281124 ds = xr.open_dataset(f"{root_lavoro}/atmos_daily_zstd_sel.nc", decode_times=False)
-    # fmg 021224 ds = xr.open_dataset(f"{root_lavoro}/03340.atmos_average_zstd.nc", decode_times=False)
     ds = xr.open_dataset(f"{root_lavoro}/03340.atmos_diurn.nc", decode_times=False)
     logging.debug("Done.")
 
-    #numts = ds.sizes['time']
-    #logging.debug(f"risoluzione temporale: {round( (668/numts)**(-1))} ist. per sol")
-
     psf = ds['ps']
-    ''' fmg 281124 adatto al file dati preso dalla nasa 
-    tsf = ds['surf_temp']
-    wind_surf_x = ds['ukd']
-    wind_surf_y = ds['vkd']
-    '''
     tsf = ds['temp_bot']
     wind_surf_x = ds['ucomp_bot']
     wind_surf_y = ds['vcomp_bot']
 
-    # fmg 021224 questo campo non c'è -- co2 = ds['co2ice_sfc']
     R = 189.020
     rho_a = psf / (R * tsf)
 
-    #####
-    # ATMOS_DIURN
-    #####
-    # fmg 021224 
-    # Nei file diurn forniti dalla nasa non c'è lo stress
-    #   quindi me lo devo calcolare, uso la formula:
-    #   tau = rho_a * qrt(u_star) * Cd 
-    # stress = ds['stress']
-    CD = 0.003  # L'ho preso da AmesGCM/atmos_param_mars/surface_flux.F90  ->  real    :: cd_drag_cnst          =  0.003
+    CD = 0.003  # Drag coefficient
     wind_speed = np.sqrt(wind_surf_x**2 + wind_surf_y**2)
     stress = CD * rho_a * wind_speed**2
 
-    
-    #mask_no_co2 = co2 == 0.0  # True dove non c'è co2 ghiacciata
-    #filtered_ds = ds.where(mask_no_co2, drop=True)
-
-    #return filtered_ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a
     return ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a
 
 
-# Definizione dell'algoritmo specifico (Fenton 2018)
 @logica_comune
 def fenton2018(ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a):
+    """
+    Implements the sand flux calculation based on Fenton et al. (2018).
+
+    Args:
+        ds (xarray.Dataset): Input dataset.
+        psf (xarray.DataArray): Surface pressure.
+        tsf (xarray.DataArray): Surface temperature.
+        wind_surf_x (xarray.DataArray): Eastward wind component.
+        wind_surf_y (xarray.DataArray): Northward wind component.
+        stress (xarray.DataArray): Surface stress.
+        rho_a (xarray.DataArray): Air density.
+
+    Returns:
+        tuple: Contains sand flux, wind direction, and wind components.
+    """
     logging.debug('Calculating u* thresholds.')
     AN = 0.0123
     G = 3.72
-    R = 189.020
     RHO_P = 3000.0
     GAM = 0.0003
     D = 0.0001
-    #rho_a = psf / (R * tsf)
-    
+
     ustar_ft = np.sqrt(AN * ((RHO_P * G * D / rho_a) + (GAM / (rho_a * D))))
-    
-    logging.debug('Calcularing downwind')
+
+    logging.debug('Calculating downwind direction.')
     downwind = np.arctan2(wind_surf_x, wind_surf_y) * (180. / np.pi)
     downwind = xr.where((downwind < 0.), downwind + 360., downwind)
 
@@ -125,35 +125,55 @@ def fenton2018(ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_a):
     p_tr = np.exp(inexp_ft) + np.exp(inexp_ft) * ((np.exp(inexp_it) - np.exp(inexp_ft)) / (1 - np.exp(inexp_it) + np.exp(inexp_ft)))
 
     q = p_tr * CQ * (rho_a / G) * (ustar - ustar_it) * (ustar + ustar_it) ** 2
-    
+
     return q, downwind, wind_surf_x, wind_surf_y
+
 
 @logica_comune
 def rubanenko2023(ds, psf, tsf, wind_surf_x, wind_surf_y, stress, rho_f):
-    ###
-    # Calculate wind direction.
-    ###
-    logging.debug('Rubanenko2023 -- Calcularing downwind')
-    downwind = np.arctan2(wind_surf_x, wind_surf_y) * (180. / np.pi)  # Wind direction.
+    """
+    Implements the sand flux calculation based on Rubanenko et al. (2023).
+
+    Args:
+        ds (xarray.Dataset): Input dataset.
+        psf (xarray.DataArray): Surface pressure.
+        tsf (xarray.DataArray): Surface temperature.
+        wind_surf_x (xarray.DataArray): Eastward wind component.
+        wind_surf_y (xarray.DataArray): Northward wind component.
+        stress (xarray.DataArray): Surface stress.
+        rho_f (float): Fluid density threshold.
+
+    Returns:
+        tuple: Contains sand flux, wind direction, and wind components.
+    """
+    logging.debug('Calculating downwind direction.')
+    downwind = np.arctan2(wind_surf_x, wind_surf_y) * (180. / np.pi)
     downwind = xr.where((downwind < 0.), downwind + 360., downwind)
 
     logging.debug('Calculating Q...')
-    # Convert wind shear to bed stress ,   Ref: (2) page 4 of RUBANENKO et al.
-    # tau = rho_f * u_star_2_min_zstd
     tau = stress
-    # tau_it = 0.01  # 0.01 N/m² corrisponde a circa 0.00102 kg/m².
     tau_it = float(sys.argv[3])
-    logging.debug(f"tau_it={tau_it}")
     q = xr.where(
         tau > tau_it,
         np.sqrt(tau_it / rho_f) * (tau - tau_it),
         0.
     )
-    
     return q, downwind, wind_surf_x, wind_surf_y
 
-# Funzione finale per calcolare metriche comuni
+
 def calcola_metriche(q, downwind, wind_surf_x, wind_surf_y):
+    """
+    Calculates metrics for sand transport analysis.
+
+    Args:
+        q (xarray.DataArray): Sand flux.
+        downwind (xarray.DataArray): Wind direction.
+        wind_surf_x (xarray.DataArray): Eastward wind component.
+        wind_surf_y (xarray.DataArray): Northward wind component.
+
+    Returns:
+        xarray.Dataset: Dataset with calculated metrics.
+    """
     dp = np.sum(q)
     q_x = np.sin(np.deg2rad(downwind)) * q
     q_y = np.cos(np.deg2rad(downwind)) * q
@@ -180,37 +200,11 @@ def calcola_metriche(q, downwind, wind_surf_x, wind_surf_y):
     new_ds = new_ds.roll(lon=new_ds.dims['lon'] // 2, roll_coords=True)
     new_ds['lon'] = (new_ds['lon'] + 180) % 360 - 180
 
+    return new_ds
 
-    #####
-    # ATMOS_DIURN: Unifica le dimensioni temporali time e time_of_day_24
-    #
-    #####
-    time = new_ds['time']
-    time_of_day_24 = new_ds['time_of_day_24']
-    new_time = (time.values[:, np.newaxis] + time_of_day_24.values[np.newaxis, :] / 24).flatten()
-    new_ds2 = new_ds.stack(new_time=("time", "time_of_day_24")).reset_index("new_time")
-    new_ds2 = new_ds2.assign_coords(new_time=new_time)
-    new_ds2 = new_ds2.drop_vars(["time", "time_of_day_24"])  
-
-    # Rinomina la nuova dimensione
-    new_ds2 = new_ds2.rename({"new_time": "time"})
-
-    return new_ds2
-
-# Esecuzione
-#alg = "fenton2018"
-#file_dest = f"{root_lavoro}/sand_flux_{alg}.nc"
-#ds = fenton2018()  # Restituisce il nuovo dataset con le metriche
-#ds.to_netcdf(file_dest)
-
-#alg = "rubanenko2023"
-#file_dest = f"{root_lavoro}/sand_flux_{alg}.nc"
-#ds = rubanenko2023()
-#ds.to_netcdf(file_dest)
-
-logging.debug(sys.argv[2])
 
 if sys.argv[2] == "fenton2018":
     fenton2018()
 elif sys.argv[2] == "rubanenko2023":
     rubanenko2023()
+

@@ -3,3 +3,5 @@ esempio*
 Example.html
 log/*
 *.nc
+*.bak*
+tests/__pycache__/

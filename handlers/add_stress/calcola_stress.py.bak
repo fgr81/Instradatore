@@ -5,17 +5,17 @@ import logging
 
 prefix = sys.argv[2]  # Primo argomento passato
 current = sys.argv[3]  
-_next = sys.argv[4]  
+nextt = sys.argv[4]  
 root_lavoro = sys.argv[5]  
 tipo_dati = sys.argv[6]  
 
 logging.basicConfig(filename='calcola_stress.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(filename)s - Line %(lineno)d - %(message)s')
 
-logging.debug(f"* calcola_stress.py  {prefix=} {current=} {_next=} {root_lavoro=} {tipo_dati=}")
+logging.debug(f"* calcola_stress.py  {prefix=} {current=} {nextt=} {root_lavoro=} {tipo_dati=}")
 
 
 # Caricamento dei dati
-file_path = f"{root_lavoro}/{prefix}.atmos_{tipo_dati}_Ls{current}_{_next}_zagl.nc"
+file_path = f"{root_lavoro}/{prefix}.atmos_{tipo_dati}_Ls{current}_{nextt}_zagl.nc"
 ds = Dataset(file_path, 'r+')  # Apertura in modalità lettura e scrittura
 
 # Variabili dal file
@@ -76,7 +76,7 @@ shear_magnitude = np.sqrt(shear_u**2 + shear_v**2)
 # Calcolo dello stress (\tau = \rho \cdot shear^2)
 stress = rho * shear_magnitude**2
 
-logging.debug("Aggiungi la variabile "stress" al dataset e salva")
+logging.debug("Aggiungi la variabile \"stress\" al dataset e salva")
 if 'stress' not in ds.variables:
     stress_var = ds.createVariable('stress', 'f4', ('time', 'time_of_day_24', 'lat', 'lon'), fill_value=np.nan)
     stress_var.units = "Pa"

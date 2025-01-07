@@ -13,7 +13,7 @@ root_lavoro=$4
 mkdir -p $root_lavoro
 
 ##cp -v $file_dati $root_lavoro/
-#cp -v $3/$2 $root_lavoro/
+cp -v $3/$2 $root_lavoro/
 
 
 cd $root_lavoro
