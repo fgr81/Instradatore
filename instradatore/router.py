@@ -30,7 +30,7 @@ class Step:
         logging.debug(f"Instantiating {self}")
         _ret = 0
         try:
-            module_name = f"handlers.{self.type}"
+            module_name = f"plugins.{self.type}"
             module = importlib.import_module(module_name)
             class_name = ''.join(word.capitalize() for word in self.type.split('_'))
             logging.debug(f"{class_name=}")
